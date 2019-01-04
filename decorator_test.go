@@ -1,6 +1,7 @@
 package httpclient_test
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,27 @@ import (
 
 	"github.com/nubunto/httpclient"
 )
+
+type testClient struct {
+	fail  bool
+	calls int
+}
+
+func (tc *testClient) Do(r *http.Request) (*http.Response, error) {
+	tc.calls++
+	if tc.fail {
+		return nil, errors.New("failed")
+	}
+	return &http.Response{}, nil
+}
+
+type trackingHandler struct {
+	calls int
+}
+
+func (th *trackingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	th.calls++
+}
 
 var defaultHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hello there!"))
@@ -52,13 +74,18 @@ func TestFaultTolerance(t *testing.T) {
 	server := newServer(t, nil)
 	defer server.Close()
 
-	root := &http.Client{}
-	c := httpclient.New(root, httpclient.FaultTolerance(2, time.Second))
+	attempts := 2
+	root := &testClient{
+		fail: true,
+	}
+	c := httpclient.New(root, httpclient.FaultTolerance(attempts, 500*time.Millisecond))
 
 	req := newRequest(t, "GET", server.URL, nil)
-	res, err := c.Do(req)
-	if err != nil {
-		t.Fatal("error should be nil:", err.Error())
+	_, err := c.Do(req)
+	if err == nil {
+		t.Error("error should be non-nil")
 	}
-
+	if root.calls != attempts {
+		t.Errorf("client should have been called %d times, actually called %d", attempts, root.calls)
+	}
 }
