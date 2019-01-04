@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"encoding/base64"
 	"net/http"
 	"time"
 )
@@ -22,6 +23,16 @@ func FaultTolerance(attempts int, backoff time.Duration) Decorator {
 			return
 		})
 	}
+}
+
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+// BasicAuthorization sets the Authorization header with the basic authorization scheme
+func BasicAuthorization(username, password string) Decorator {
+	return Authorization("Basic " + basicAuth(username, password))
 }
 
 // Authorization adds an Authorization header with the given token
