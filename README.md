@@ -42,7 +42,7 @@ You can also create your own Decorators:
     func MyDecorator() httpclient.Decorator {
         return func(client httpclient.Client) httpclient.Client {
             return httpclient.ClientFunc(func(r *http.Request) (*http.Response, error) {
-                // do whatever you want with the request *before* the it is made
+                // do whatever you want with the request *before* it is made
                 res, err := client.Do(r)
                 // do whatever you want with the response now it is made
                 return res, err
